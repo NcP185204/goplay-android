@@ -34,7 +34,9 @@ import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.text.input.PasswordVisualTransformation
 import androidx.compose.ui.unit.dp
 import androidx.credentials.CredentialManager
+import androidx.credentials.CustomCredential
 import androidx.credentials.GetCredentialRequest
+import androidx.credentials.PasswordCredential
 import androidx.credentials.exceptions.GetCredentialException
 import androidx.credentials.exceptions.NoCredentialException
 import androidx.navigation.NavController
@@ -48,6 +50,7 @@ import com.facebook.login.LoginManager
 import com.facebook.login.LoginResult
 import com.google.android.libraries.identity.googleid.GetGoogleIdOption
 import com.google.android.libraries.identity.googleid.GoogleIdTokenCredential
+import com.google.android.libraries.identity.googleid.GoogleIdTokenParsingException
 import kotlinx.coroutines.launch
 
 @Composable
@@ -63,19 +66,12 @@ fun LoginScreen(authViewModel: AuthViewModel, navController: NavController) {
     val credentialManager = remember { CredentialManager.create(context) }
 
     // --- FACEBOOK SIGN-IN ---
-    // 1. Create the CallbackManager
     val callbackManager = remember { CallbackManager.Factory.create() }
-
-    // 2. Create the ActivityResultLauncher
     val facebookLoginLauncher = rememberLauncherForActivityResult(
-        // Use the contract from LoginManager
         contract = LoginManager.getInstance().createLogInActivityResultContract(callbackManager, null),
-        // The onResult lambda is where you handle the outcome
-        onResult = { /* This can be left empty as the callback below handles it */ }
+        onResult = { /* Callback handles it */ }
     )
 
-    // 3. Register the callback with the LoginManager. This is the crucial part.
-    // This should be done outside of LaunchedEffect to survive recomposition.
     LoginManager.getInstance().registerCallback(callbackManager, object : FacebookCallback<LoginResult> {
         override fun onSuccess(result: LoginResult) {
             Log.d("LoginScreen_Facebook", "onSuccess: Token received")
@@ -88,7 +84,6 @@ fun LoginScreen(authViewModel: AuthViewModel, navController: NavController) {
         }
 
         override fun onError(error: FacebookException) {
-            // THIS IS THE MOST IMPORTANT PART FOR DEBUGGING
             Log.e("LoginScreen_Facebook", "onError: ${error.message}", error)
             authViewModel.setAuthError(error.message ?: "Facebook login failed")
         }
@@ -156,10 +151,40 @@ fun LoginScreen(authViewModel: AuthViewModel, navController: NavController) {
                         val result = credentialManager.getCredential(context, request)
                         val credential = result.credential
 
-                        if (credential is GoogleIdTokenCredential) {
-                            authViewModel.loginWithGoogle(credential.idToken)
-                        } else {
-                            authViewModel.setAuthError("Sign-in failed: Credential is not a Google ID token.")
+                        // SỬA LỖI: Xử lý các loại thông tin đăng nhập khác nhau, bao gồm cả CustomCredential
+                        when (credential) {
+                            is GoogleIdTokenCredential -> {
+                                // Trường hợp 1 (Legacy): Trực tiếp nhận GoogleIdTokenCredential
+                                authViewModel.loginWithGoogle(credential.idToken)
+                            }
+                            is CustomCredential -> {
+                                // Trường hợp 2 (Hiện đại): Nhận một CustomCredential và kiểm tra xem có phải của Google không
+                                if (credential.type == GoogleIdTokenCredential.TYPE_GOOGLE_ID_TOKEN_CREDENTIAL) {
+                                    try {
+                                        val googleIdTokenCredential = GoogleIdTokenCredential.createFrom(credential.data)
+                                        authViewModel.loginWithGoogle(googleIdTokenCredential.idToken)
+                                    } catch (e: GoogleIdTokenParsingException) {
+                                        Log.e("LoginScreen", "Failed to parse Google ID token from CustomCredential", e)
+                                        authViewModel.setAuthError("Failed to parse Google ID token.")
+                                    }
+                                } else {
+                                    Log.w("LoginScreen", "Received an unsupported CustomCredential type: ${credential.type}")
+                                    authViewModel.setAuthError("Unsupported custom credential type received.")
+                                }
+                            }
+                            is PasswordCredential -> {
+                                // Trường hợp 3: Người dùng chọn mật khẩu đã lưu (Google Smart Lock)
+                                val email = credential.id
+                                val pwd = credential.password
+                                emailOrPhone = email
+                                password = pwd
+                                authViewModel.login(email, pwd)
+                            }
+                            else -> {
+                                // Trường hợp khác: Loại không xác định
+                                Log.w("LoginScreen", "Received an unexpected credential type: ${credential::class.java.name}")
+                                authViewModel.setAuthError("Unsupported credential type received.")
+                            }
                         }
 
                     } catch (e: GetCredentialException) {
@@ -186,7 +211,6 @@ fun LoginScreen(authViewModel: AuthViewModel, navController: NavController) {
         OutlinedButton(
             onClick = {
                 authViewModel.setAuthLoading()
-                // 4. Launch the login flow
                 facebookLoginLauncher.launch(listOf("email", "public_profile"))
             },
             modifier = Modifier.fillMaxWidth()
@@ -205,7 +229,7 @@ fun LoginScreen(authViewModel: AuthViewModel, navController: NavController) {
 
         Spacer(modifier = Modifier.height(24.dp))
         Text(
-            text = "Don't have an account? Register",
+            text = "Don\'t have an account? Register",
             modifier = Modifier.clickable { navController.navigate("register") }
         )
     }
