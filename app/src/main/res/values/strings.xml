@@ -2,8 +2,9 @@
     <string name="app_name">App_GO_PLAY</string>
 
     <!-- Social Login IDs & Tokens -->
-    <string name="google_web_client_id">535345280560-na12k95ir9dar9j86pj6qe679429tv5l.apps.googleusercontent.com</string>
+    <string name="google_web_client_id">535345280560-sfthnndpn6m0c3nj5lkgdn0r70sc16mg.apps.googleusercontent.com</string>
     <string name="facebook_app_id">1003653891925815</string>
     <string name="facebook_client_token">507f32adec5ae8d1022181b516901fbf</string>
 
 </resources>
+
