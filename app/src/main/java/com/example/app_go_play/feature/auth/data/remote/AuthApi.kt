@@ -3,6 +3,7 @@ package com.example.app_go_play.feature.auth.data.remote
 import com.example.app_go_play.feature.auth.data.remote.dto.ForgotPasswordRequest
 import com.example.app_go_play.feature.auth.data.remote.dto.LoginRequest
 import com.example.app_go_play.feature.auth.data.remote.dto.LoginResponse
+import com.example.app_go_play.feature.auth.data.remote.dto.LogoutRequest
 import com.example.app_go_play.feature.auth.data.remote.dto.RegisterRequest
 import com.example.app_go_play.feature.auth.data.remote.dto.SocialLoginRequest
 import com.example.app_go_play.feature.auth.domain.model.User
@@ -20,8 +21,12 @@ interface AuthApi {
     @POST("api/auth/forgot-password")
     suspend fun forgotPassword(@Body forgotPasswordRequest: ForgotPasswordRequest)
 
-    // API MỚI CHO ĐĂNG NHẬP MẠNG XÃ HỘI
     @POST("api/auth/social-login")
     suspend fun socialLogin(@Body socialLoginRequest: SocialLoginRequest): LoginResponse
+    
+    // Sửa lại hàm logout để gửi refreshToken lên server
+    @POST("api/auth/logout")
+    suspend fun logout(@Body logoutRequest: LogoutRequest)
+
 
 }
