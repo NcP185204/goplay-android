@@ -36,19 +36,16 @@ import androidx.compose.ui.platform.LocalSoftwareKeyboardController
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.ImeAction
-import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.navigation.NavController
 import androidx.navigation.NavGraph.Companion.findStartDestination
 import androidx.navigation.compose.currentBackStackEntryAsState
-import androidx.navigation.compose.rememberNavController
 import com.example.app_go_play.R
 import com.example.app_go_play.feature.court.domain.model.Court
 import com.example.app_go_play.feature.home.presentation.viewmodel.HomeState
 import com.example.app_go_play.feature.home.presentation.viewmodel.HomeViewModel
-import com.example.app_go_play.ui.theme.App_GO_PLAYTheme
 import java.net.URLEncoder
 import java.nio.charset.StandardCharsets
 
@@ -334,35 +331,39 @@ private data class BottomNavItem(val label: String, val icon: ImageVector, val r
 fun MyHomeBottomAppBar(navController: NavController) {
     val items = listOf(
         BottomNavItem("Home", Icons.Default.Home, "home"),
+        BottomNavItem("Courts", Icons.Default.Group, "courts"),
         BottomNavItem("My Events", Icons.Default.CalendarToday, "my_events"),
-        BottomNavItem("Profile", Icons.Default.Person, "profile"),
-        BottomNavItem("Friends", Icons.Default.Group, "friends"),
-        BottomNavItem("Booking", Icons.Default.BookmarkAdd, "booking_search")
+        BottomNavItem("Booking", Icons.Default.BookmarkAdd, "booking_search"),
+        BottomNavItem("Profile", Icons.Default.Person, "profile")
     )
 
-    BottomAppBar(
-        containerColor = Color.White,
-        actions = {
-            val navBackStackEntry by navController.currentBackStackEntryAsState()
-            val currentRoute = navBackStackEntry?.destination?.route
+    NavigationBar(
+        containerColor = Color.White
+    ) {
+        val navBackStackEntry by navController.currentBackStackEntryAsState()
+        val currentRoute = navBackStackEntry?.destination?.route
 
-            items.forEach { item ->
-                NavigationBarItem(
-                    selected = currentRoute == item.route,
-                    onClick = {
-                        navController.navigate(item.route) {
-                            popUpTo(navController.graph.findStartDestination().id) {
-                                saveState = true
-                            }
-                            launchSingleTop = true
-                            restoreState = true
+        items.forEach { item ->
+            NavigationBarItem(
+                selected = currentRoute == item.route,
+                onClick = {
+                    navController.navigate(item.route) {
+                        popUpTo(navController.graph.findStartDestination().id) {
+                            saveState = true
                         }
-                    },
-                    icon = { Icon(item.icon, contentDescription = item.label) },
-                    label = { Text(item.label) }
+                        launchSingleTop = true
+                        restoreState = true
+                    }
+                },
+                icon = { Icon(item.icon, contentDescription = item.label) },
+                label = { Text(item.label) },
+                colors = NavigationBarItemDefaults.colors(
+                    selectedIconColor = Color.Red,
+                    selectedTextColor = Color.Red,
+                    unselectedIconColor = Color.Gray,
+                    unselectedTextColor = Color.Gray
                 )
-            }
+            )
         }
-    )
+    }
 }
-
