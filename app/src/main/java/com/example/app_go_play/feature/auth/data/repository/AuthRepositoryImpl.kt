@@ -1,8 +1,11 @@
 package com.example.app_go_play.feature.auth.data.repository
 
+import android.util.Log
+import com.example.app_go_play.di.TokenManager
 import com.example.app_go_play.feature.auth.data.remote.AuthApi
 import com.example.app_go_play.feature.auth.data.remote.dto.ForgotPasswordRequest
 import com.example.app_go_play.feature.auth.data.remote.dto.LoginRequest
+import com.example.app_go_play.feature.auth.data.remote.dto.LogoutRequest
 import com.example.app_go_play.feature.auth.data.remote.dto.RegisterRequest
 import com.example.app_go_play.feature.auth.data.remote.dto.SocialLoginRequest
 import com.example.app_go_play.feature.auth.domain.model.Role
@@ -12,7 +15,8 @@ import javax.inject.Inject
 
 
 class AuthRepositoryImpl @Inject constructor(
-    private val authApi: AuthApi
+    private val authApi: AuthApi,
+    private val tokenManager: TokenManager
 ) : AuthRepository {
 
     override suspend fun register(fullName: String, email: String?, phoneNumber: String?, password: String, role: Role): Result<User> {
@@ -29,6 +33,8 @@ class AuthRepositoryImpl @Inject constructor(
         return try {
             val loginRequest = LoginRequest(emailOrPhone, password)
             val response = authApi.login(loginRequest)
+            tokenManager.accessToken = response.accessToken
+            tokenManager.refreshToken = response.refreshToken
             Result.success(response.accessToken)
         } catch (e: Exception) {
             Result.failure(e)
@@ -49,6 +55,8 @@ class AuthRepositoryImpl @Inject constructor(
         return try {
             val socialLoginRequest = SocialLoginRequest(token, provider)
             val response = authApi.socialLogin(socialLoginRequest)
+            tokenManager.accessToken = response.accessToken
+            tokenManager.refreshToken = response.refreshToken
             Result.success(response.accessToken)
         } catch (e: Exception) {
             Result.failure(e)
@@ -56,6 +64,15 @@ class AuthRepositoryImpl @Inject constructor(
     }
 
     override suspend fun logout() {
-        // For now, this function does nothing as it might clear local tokens
+        val refreshToken = tokenManager.refreshToken
+        if (refreshToken != null) {
+            try {
+                val logoutRequest = LogoutRequest(refreshToken)
+                authApi.logout(logoutRequest)
+            } catch (e: Exception) {
+                Log.e("AuthRepositoryImpl", "Error calling logout API, but proceeding with client-side logout.", e)
+            }
+        }    
+        tokenManager.clearTokens()
     }
 }
