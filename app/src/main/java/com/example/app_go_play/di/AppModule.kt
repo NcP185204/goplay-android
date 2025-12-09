@@ -20,34 +20,29 @@ import javax.inject.Singleton
 @InstallIn(SingletonComponent::class)
 object AppModule {
 
-    // SỬA LỖI: Đổi BASE_URL để trỏ đến server thật, không phải localhost của emulator
     private const val BASE_URL = "http://10.0.2.2:8080/"
 
-    // --- CẤU HÌNH "GIÁN ĐIỆP" LOGGING ---
     @Provides
     @Singleton
     fun provideLoggingInterceptor(): HttpLoggingInterceptor {
-        // Tạo interceptor và set level là BODY để xem tất cả thông tin
         return HttpLoggingInterceptor().setLevel(HttpLoggingInterceptor.Level.BODY)
     }
 
     @Provides
     @Singleton
-    fun provideOkHttpClient(loggingInterceptor: HttpLoggingInterceptor): OkHttpClient {
-        // Xây dựng OkHttpClient và gắn interceptor vào
+    fun provideOkHttpClient(authInterceptor: AuthInterceptor, loggingInterceptor: HttpLoggingInterceptor): OkHttpClient {
         return OkHttpClient.Builder()
-            .addInterceptor(loggingInterceptor)
+            .addInterceptor(authInterceptor) // Thêm interceptor xác thực
+            .addInterceptor(loggingInterceptor) // Thêm interceptor log
             .build()
     }
-    // -------------------------------------
 
     @Provides
     @Singleton
     fun provideRetrofit(okHttpClient: OkHttpClient): Retrofit {
-        // Sửa lại hàm này để nhận OkHttpClient đã được cấu hình
         return Retrofit.Builder()
             .baseUrl(BASE_URL)
-            .client(okHttpClient) // Gắn OkHttpClient vào Retrofit
+            .client(okHttpClient)
             .addConverterFactory(GsonConverterFactory.create())
             .build()
     }
@@ -61,8 +56,8 @@ object AppModule {
 
     @Provides
     @Singleton
-    fun provideAuthRepository(api: AuthApi): AuthRepository {
-        return AuthRepositoryImpl(api)
+    fun provideAuthRepository(api: AuthApi, tokenManager: TokenManager): AuthRepository {
+        return AuthRepositoryImpl(api, tokenManager)
     }
 
     // --- Court Dependencies ---
