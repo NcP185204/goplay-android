@@ -90,4 +90,7 @@ dependencies {
 
     // Facebook Login
     implementation("com.facebook.android:facebook-login:17.0.0")
+
+    // Coil for image loading
+    implementation("io.coil-kt:coil-compose:2.6.0")
 }
