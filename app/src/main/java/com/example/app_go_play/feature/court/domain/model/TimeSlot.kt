@@ -11,5 +11,5 @@ data class TimeSlot(
     val startTime: LocalDateTime,
     val endTime: LocalDateTime,
     val price: Double,
-    val isAvailable: Boolean
+    val available: Boolean
 )
