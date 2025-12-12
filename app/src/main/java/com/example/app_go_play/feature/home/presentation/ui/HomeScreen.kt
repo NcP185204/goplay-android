@@ -42,12 +42,14 @@ import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.navigation.NavController
 import androidx.navigation.NavGraph.Companion.findStartDestination
 import androidx.navigation.compose.currentBackStackEntryAsState
+import coil.compose.AsyncImage
 import com.example.app_go_play.R
 import com.example.app_go_play.feature.court.domain.model.Court
 import com.example.app_go_play.feature.home.presentation.viewmodel.HomeState
 import com.example.app_go_play.feature.home.presentation.viewmodel.HomeViewModel
 import java.net.URLEncoder
 import java.nio.charset.StandardCharsets
+import java.util.Locale
 
 @Composable
 fun HomeScreen(
@@ -282,13 +284,16 @@ fun FacilityCard(
     ) {
         Column {
             Box(modifier = Modifier.height(100.dp)) {
-                Image(
-                    painter = painterResource(id = R.drawable.ic_launcher_background),
+                AsyncImage(
+                    model = court.thumbnailUrl,
                     contentDescription = court.name,
                     modifier = Modifier.fillMaxWidth(),
-                    contentScale = ContentScale.Crop
+                    contentScale = ContentScale.Crop,
+                    placeholder = painterResource(id = R.drawable.ic_launcher_background),
+                    error = painterResource(id = R.drawable.ic_launcher_background)
                 )
-                court.rating?.let {
+
+                court.averageRating?.let {
                     Row(
                         modifier = Modifier
                             .align(Alignment.TopEnd)
@@ -305,7 +310,7 @@ fun FacilityCard(
                             modifier = Modifier.size(16.dp)
                         )
                         Spacer(modifier = Modifier.width(4.dp))
-                        Text(it.toString(), color = Color.White, fontSize = 12.sp)
+                        Text(String.format(Locale.US, "%.1f", it), color = Color.White, fontSize = 12.sp)
                     }
                 }
             }
