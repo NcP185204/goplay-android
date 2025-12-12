@@ -9,8 +9,9 @@ data class Court(
     val name: String,
     val address: String,
     val courtType: String,       // e.g., "FOOTBALL", "TENNIS"
-    val rating: Double?,
+    val averageRating: Double?,
     val pricePerHour: Double,
-    val imageUrls: List<String>,
+    var thumbnailUrl: String?,
+    val imageUrls: List<String> = emptyList(), // <-- GIẢI QUYẾT VẤN ĐỀ 1
     val ownerId: Long
 )
