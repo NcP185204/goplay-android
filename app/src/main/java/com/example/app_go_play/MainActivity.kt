@@ -99,7 +99,7 @@ fun AppNavigation(modifier: Modifier = Modifier) {
                     route = "court_detail/{courtId}",
                     arguments = listOf(navArgument("courtId") { type = NavType.IntType })
                 ) {
-                    CourtDetailScreen()
+                    CourtDetailScreen(navController = navController)
                 }
                 composable(
                     route = "booking_screen/{courtId}",
