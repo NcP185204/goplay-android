@@ -16,8 +16,9 @@ data class CourtDto(
     val name: String,
     val address: String,
     val courtType: String,
-    val rating: Double?,
+    val averageRating: Double?,
     val pricePerHour: Double,
+    val thumbnailUrl: String?,
     val imageUrls: List<String>?,
     val ownerId: Long
 )
@@ -36,7 +37,7 @@ data class TimeSlotDto(
     val startTime: String, // ISO-8601 format, e.g., "2024-05-21T08:00:00Z"
     val endTime: String,   // ISO-8601 format
     val price: Double,
-    val isAvailable: Boolean
+    val available: Boolean
 )
 
 // DTO for creating a review
