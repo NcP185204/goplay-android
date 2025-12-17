@@ -221,12 +221,12 @@ private fun TimeSlotItem(slot: TimeSlot, isSelected: Boolean, onClick: () -> Uni
 
     val containerColor = when {
         isSelected -> MaterialTheme.colorScheme.primary
-        slot.isAvailable -> MaterialTheme.colorScheme.surface
+        slot.available -> MaterialTheme.colorScheme.surface
         else -> MaterialTheme.colorScheme.onSurface.copy(alpha = 0.12f)
     }
     val contentColor = when {
         isSelected -> MaterialTheme.colorScheme.onPrimary
-        slot.isAvailable -> MaterialTheme.colorScheme.onSurface
+        slot.available -> MaterialTheme.colorScheme.onSurface
         else -> MaterialTheme.colorScheme.onSurface.copy(alpha = 0.38f)
     }
     val borderColor = if (isSelected) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.outline
@@ -235,7 +235,7 @@ private fun TimeSlotItem(slot: TimeSlot, isSelected: Boolean, onClick: () -> Uni
         modifier = Modifier
             .border(1.dp, borderColor, RoundedCornerShape(8.dp))
             .background(containerColor, RoundedCornerShape(8.dp))
-            .clickable(enabled = slot.isAvailable, onClick = onClick)
+            .clickable(enabled = slot.available, onClick = onClick)
             .padding(vertical = 8.dp, horizontal = 12.dp),
         contentAlignment = Alignment.Center
     ) {
