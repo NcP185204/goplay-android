@@ -26,7 +26,8 @@ data class CourtDetailState(
     val selectedDate: LocalDate = LocalDate.now(),
     val isLoadingCourt: Boolean = false,
     val isLoadingSlots: Boolean = false,
-    val error: String? = null
+    val error: String? = null,
+    val selectedTimeSlots: List<TimeSlot> = emptyList() // Field to track user selection
 )
 
 @HiltViewModel
@@ -64,7 +65,8 @@ class CourtDetailViewModel @Inject constructor(
 
     fun loadAvailableTimeSlots(date: LocalDate) {
         viewModelScope.launch {
-            _state.update { it.copy(isLoadingSlots = true, selectedDate = date, error = null) }
+            // When date changes, reset the selected slots
+            _state.update { it.copy(isLoadingSlots = true, selectedDate = date, error = null, selectedTimeSlots = emptyList()) }
             getAvailableTimeSlotsUseCase(courtId, date)
                 .onSuccess { slots ->
                     _state.update { it.copy(isLoadingSlots = false, timeSlots = slots) }
@@ -72,6 +74,19 @@ class CourtDetailViewModel @Inject constructor(
                 .onFailure { error ->
                     _state.update { it.copy(isLoadingSlots = false, error = error.message) }
                 }
+        }
+    }
+
+    // Handle user tapping on a time slot
+    fun toggleTimeSlotSelection(slot: TimeSlot) {
+        _state.update { currentState ->
+            val currentSelected = currentState.selectedTimeSlots.toMutableList()
+            if (currentSelected.contains(slot)) {
+                currentSelected.remove(slot)
+            } else {
+                currentSelected.add(slot)
+            }
+            currentState.copy(selectedTimeSlots = currentSelected)
         }
     }
 
