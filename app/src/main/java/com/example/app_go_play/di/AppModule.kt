@@ -1,11 +1,14 @@
 package com.example.app_go_play.di
 
 import com.example.app_go_play.feature.auth.data.remote.AuthApi
+import com.example.app_go_play.feature.auth.data.remote.UserApi
 import com.example.app_go_play.feature.auth.data.repository.AuthRepositoryImpl
 import com.example.app_go_play.feature.auth.domain.repository.AuthRepository
+import com.example.app_go_play.feature.booking.data.remote.BookingApi
 import com.example.app_go_play.feature.court.data.remote.CourtApi
 import com.example.app_go_play.feature.court.data.repository.CourtRepositoryImpl
 import com.example.app_go_play.feature.court.domain.repository.CourtRepository
+import com.example.app_go_play.feature.notification.data.remote.NotificationApi
 import dagger.Module
 import dagger.Provides
 import dagger.hilt.InstallIn
@@ -32,8 +35,8 @@ object AppModule {
     @Singleton
     fun provideOkHttpClient(authInterceptor: AuthInterceptor, loggingInterceptor: HttpLoggingInterceptor): OkHttpClient {
         return OkHttpClient.Builder()
-            .addInterceptor(authInterceptor) // Thêm interceptor xác thực
-            .addInterceptor(loggingInterceptor) // Thêm interceptor log
+            .addInterceptor(authInterceptor)
+            .addInterceptor(loggingInterceptor)
             .build()
     }
 
@@ -56,6 +59,12 @@ object AppModule {
 
     @Provides
     @Singleton
+    fun provideUserApi(retrofit: Retrofit): UserApi {
+        return retrofit.create(UserApi::class.java)
+    }
+
+    @Provides
+    @Singleton
     fun provideAuthRepository(api: AuthApi, tokenManager: TokenManager): AuthRepository {
         return AuthRepositoryImpl(api, tokenManager)
     }
@@ -71,5 +80,19 @@ object AppModule {
     @Singleton
     fun provideCourtRepository(api: CourtApi): CourtRepository {
         return CourtRepositoryImpl(api)
+    }
+
+    // --- Booking Dependencies ---
+    @Provides
+    @Singleton
+    fun provideBookingApi(retrofit: Retrofit): BookingApi {
+        return retrofit.create(BookingApi::class.java)
+    }
+
+    // --- Notification Dependencies ---
+    @Provides
+    @Singleton
+    fun provideNotificationApi(retrofit: Retrofit): NotificationApi {
+        return retrofit.create(NotificationApi::class.java)
     }
 }
