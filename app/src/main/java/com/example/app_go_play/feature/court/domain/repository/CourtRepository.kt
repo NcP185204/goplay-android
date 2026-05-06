@@ -8,8 +8,6 @@ import java.time.LocalDate
 
 interface CourtRepository {
 
-    // --- Chức năng cho Chủ sân (Manager/Admin) ---
-
     suspend fun createCourt(courtData: Court): Result<Court>
 
     suspend fun updateCourt(courtId: Int, courtData: Court): Result<Court>
@@ -18,10 +16,9 @@ interface CourtRepository {
 
     suspend fun generateInitialTimeSlots(courtId: Int): Result<List<TimeSlot>>
 
-    // --- Chức năng chung & cho Người chơi (Player) ---
-
     suspend fun searchCourts(
         name: String?,
+        address: String?, // ĐỔI TỪ district SANG address
         courtType: String?,
         minPrice: Double?,
         maxPrice: Double?,
