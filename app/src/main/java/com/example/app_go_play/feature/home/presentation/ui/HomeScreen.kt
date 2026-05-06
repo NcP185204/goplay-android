@@ -1,55 +1,49 @@
 package com.example.app_go_play.feature.home.presentation.ui
 
-import androidx.compose.foundation.Image
+import android.content.Context
+import android.content.Intent
+import android.net.Uri
 import androidx.compose.foundation.background
+import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
-import androidx.compose.foundation.layout.Arrangement
-import androidx.compose.foundation.layout.Box
-import androidx.compose.foundation.layout.Column
-import androidx.compose.foundation.layout.PaddingValues
-import androidx.compose.foundation.layout.Row
-import androidx.compose.foundation.layout.Spacer
-import androidx.compose.foundation.layout.fillMaxSize
-import androidx.compose.foundation.layout.fillMaxWidth
-import androidx.compose.foundation.layout.height
-import androidx.compose.foundation.layout.padding
-import androidx.compose.foundation.layout.size
-import androidx.compose.foundation.layout.width
+import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.LazyRow
 import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.pager.HorizontalPager
+import androidx.compose.foundation.pager.rememberPagerState
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
-import androidx.compose.foundation.text.KeyboardActions
-import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.*
+import androidx.compose.material.icons.outlined.Notifications
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.draw.shadow
+import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
-import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.layout.ContentScale
-import androidx.compose.ui.platform.LocalSoftwareKeyboardController
-import androidx.compose.ui.res.painterResource
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
-import androidx.compose.ui.text.input.ImeAction
+import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.navigation.NavController
-import androidx.navigation.NavGraph.Companion.findStartDestination
-import androidx.navigation.compose.currentBackStackEntryAsState
 import coil.compose.AsyncImage
-import com.example.app_go_play.R
+import com.example.app_go_play.feature.booking.domain.model.Booking
 import com.example.app_go_play.feature.court.domain.model.Court
 import com.example.app_go_play.feature.home.presentation.viewmodel.HomeState
 import com.example.app_go_play.feature.home.presentation.viewmodel.HomeViewModel
-import java.net.URLEncoder
-import java.nio.charset.StandardCharsets
 import java.util.Locale
+
+// Palette màu Thể thao mới
+val SportPrimary = Color(0xFF1A237E) // Deep Blue
+val SportAccent = Color(0xFFC6FF00)  // Neon Lime
+val SportBackground = Color(0xFFF4F7FA)
 
 @Composable
 fun HomeScreen(
@@ -57,272 +51,374 @@ fun HomeScreen(
     viewModel: HomeViewModel = hiltViewModel()
 ) {
     val uiState by viewModel.uiState.collectAsState()
-    HomeScreenContent(navController = navController, state = uiState)
-}
-
-@OptIn(ExperimentalMaterial3Api::class)
-@Composable
-fun HomeScreenContent(navController: NavController, state: HomeState) {
+    val context = LocalContext.current
+    
     Scaffold(
-        topBar = { MyHomeTopBar() },
-        bottomBar = { MyHomeBottomAppBar(navController = navController) },
-        containerColor = Color(0xFFF0F0F0)
+        containerColor = SportBackground
     ) { paddingValues ->
-
-        Box(
+        LazyColumn(
             modifier = Modifier
                 .fillMaxSize()
-                .padding(paddingValues)
+                .padding(paddingValues),
+            contentPadding = PaddingValues(bottom = 24.dp)
         ) {
-            if (state.isLoading) {
-                CircularProgressIndicator(modifier = Modifier.align(Alignment.Center))
-            } else {
-                LazyColumn(
-                    modifier = Modifier.fillMaxSize(),
-                    contentPadding = PaddingValues(vertical = 16.dp),
-                    verticalArrangement = Arrangement.spacedBy(24.dp)
+            item { 
+                PersonalizedHeader(
+                    state = uiState,
+                    onNotificationClick = { navController.navigate("notification_list") }
+                ) 
+            }
+
+            item { 
+                uiState.upcomingBooking?.let { booking ->
+                    UpcomingMatchWidget(
+                        booking = booking,
+                        onDirectionClick = {
+                            openGoogleMaps(context, booking.latitude, booking.longitude, booking.courtAddress)
+                        }
+                    )
+                }
+            }
+
+            item { SearchBarSection(navController = navController) }
+            
+            item { PromotionCarousel() }
+
+            item {
+                SectionHeader("🔥 Sân bóng hàng đầu")
+                LazyRow(
+                    contentPadding = PaddingValues(horizontal = 16.dp),
+                    horizontalArrangement = Arrangement.spacedBy(16.dp)
                 ) {
-                    item { SearchAndNavigateSection(navController = navController) }
-                    item { UpcomingEvent() }
-                    item {
-                        TopFacilitiesSection(
-                            courts = state.topCourts,
-                            navController = navController
-                        )
-                    }
-                    item {
-                        NearestFacilitiesSection(
-                            courts = state.nearestCourts,
-                            navController = navController
-                        )
+                    items(uiState.topCourts) { court ->
+                        FacilityCard(court = court) {
+                            navController.navigate("court_detail/${court.id}")
+                        }
                     }
                 }
             }
-            state.error?.let {
+
+            item {
+                Spacer(modifier = Modifier.height(24.dp))
+                SectionHeader("📍 Sân gần bạn nhất")
+                LazyRow(
+                    contentPadding = PaddingValues(horizontal = 16.dp),
+                    horizontalArrangement = Arrangement.spacedBy(16.dp)
+                ) {
+                    items(uiState.nearestCourts) { court ->
+                        FacilityCard(court = court, distance = "1.2 KM") {
+                            navController.navigate("court_detail/${court.id}")
+                        }
+                    }
+                }
+            }
+        }
+    }
+}
+
+@Composable
+fun PersonalizedHeader(state: HomeState, onNotificationClick: () -> Unit) {
+    Row(
+        modifier = Modifier
+            .fillMaxWidth()
+            .padding(20.dp),
+        verticalAlignment = Alignment.CenterVertically,
+        horizontalArrangement = Arrangement.SpaceBetween
+    ) {
+        Row(verticalAlignment = Alignment.CenterVertically) {
+            Box {
+                AsyncImage(
+                    model = state.userAvatar ?: "https://cdn-icons-png.flaticon.com/512/147/147144.png",
+                    contentDescription = "Avatar",
+                    modifier = Modifier
+                        .size(54.dp)
+                        .clip(CircleShape)
+                        .border(2.5.dp, SportAccent, CircleShape),
+                    contentScale = ContentScale.Crop
+                )
+                Box(
+                    modifier = Modifier
+                        .size(14.dp)
+                        .clip(CircleShape)
+                        .background(Color.Green)
+                        .border(2.dp, Color.White, CircleShape)
+                        .align(Alignment.BottomEnd)
+                )
+            }
+            Spacer(modifier = Modifier.width(14.dp))
+            Column {
                 Text(
-                    text = it,
-                    color = MaterialTheme.colorScheme.error,
-                    modifier = Modifier.align(Alignment.Center)
+                    text = "Xin chào 👋",
+                    fontSize = 13.sp,
+                    color = Color.Gray,
+                    fontWeight = FontWeight.Medium
+                )
+                Text(
+                    text = state.userName,
+                    fontSize = 20.sp,
+                    fontWeight = FontWeight.ExtraBold,
+                    color = SportPrimary
                 )
             }
         }
-    }
-}
-
-// COMPOSABLE ĐƯỢC CẬP NHẬT CHO TÌM KIẾM VÀ ĐIỀU HƯỚNG
-@Composable
-fun SearchAndNavigateSection(navController: NavController) {
-    var searchQuery by remember { mutableStateOf("") }
-    val keyboardController = LocalSoftwareKeyboardController.current
-
-    val onSearch = {
-        keyboardController?.hide()
-        val encodedQuery = URLEncoder.encode(searchQuery, StandardCharsets.UTF_8.toString())
-        navController.navigate("court_list?query=$encodedQuery")
-    }
-
-    Column(
-        modifier = Modifier
-            .fillMaxWidth()
-            .padding(horizontal = 16.dp),
-        verticalArrangement = Arrangement.spacedBy(16.dp)
-    ) {
-        // Ô tìm kiếm
-        OutlinedTextField(
-            value = searchQuery,
-            onValueChange = { searchQuery = it },
-            modifier = Modifier.fillMaxWidth(),
-            label = { Text("Search facility name") },
-            leadingIcon = { Icon(Icons.Default.Search, contentDescription = "Search") },
-            shape = RoundedCornerShape(12.dp),
-            singleLine = true,
-            keyboardOptions = KeyboardOptions(imeAction = ImeAction.Search),
-            keyboardActions = KeyboardActions(onSearch = { onSearch() })
-        )
-        // Nút điều hướng
-        Button(
-            onClick = { onSearch() },
+        
+        IconButton(
+            onClick = onNotificationClick,
             modifier = Modifier
-                .fillMaxWidth()
-                .height(50.dp),
-            shape = RoundedCornerShape(12.dp),
-            colors = ButtonDefaults.buttonColors(containerColor = Color.Red)
+                .shadow(4.dp, CircleShape)
+                .background(Color.White, CircleShape)
+                .size(44.dp)
         ) {
-            Text("Find a facility", fontWeight = FontWeight.Bold, fontSize = 16.sp)
+            Icon(Icons.Outlined.Notifications, contentDescription = "Notifications", tint = SportPrimary)
         }
     }
 }
 
-
-@OptIn(ExperimentalMaterial3Api::class)
 @Composable
-fun MyHomeTopBar() {
-    CenterAlignedTopAppBar(
-        title = { Text("My Home", fontWeight = FontWeight.Bold) },
-        navigationIcon = {
-            IconButton(onClick = { /* TODO */ }) {
-                Icon(Icons.Default.Notifications, contentDescription = "Notifications")
+fun UpcomingMatchWidget(booking: Booking, onDirectionClick: () -> Unit) {
+    Card(
+        modifier = Modifier
+            .fillMaxWidth()
+            .padding(horizontal = 16.dp, vertical = 8.dp)
+            .shadow(12.dp, RoundedCornerShape(24.dp)),
+        shape = RoundedCornerShape(24.dp),
+        colors = CardDefaults.cardColors(containerColor = Color.Transparent)
+    ) {
+        Box(
+            modifier = Modifier
+                .background(
+                    Brush.linearGradient(
+                        listOf(SportPrimary, Color(0xFF3F51B5))
+                    )
+                )
+                .padding(24.dp)
+        ) {
+            Row(verticalAlignment = Alignment.CenterVertically) {
+                Column(modifier = Modifier.weight(1f)) {
+                    Surface(
+                        color = SportAccent.copy(alpha = 0.2f),
+                        shape = RoundedCornerShape(8.dp)
+                    ) {
+                        Text(
+                            "TRẬN ĐẤU SẮP TỚI",
+                            modifier = Modifier.padding(horizontal = 8.dp, vertical = 4.dp),
+                            color = SportAccent,
+                            fontSize = 10.sp,
+                            fontWeight = FontWeight.Black
+                        )
+                    }
+                    Spacer(modifier = Modifier.height(12.dp))
+                    Text(
+                        booking.courtName,
+                        color = Color.White,
+                        fontSize = 22.sp,
+                        fontWeight = FontWeight.Bold,
+                        maxLines = 1,
+                        overflow = TextOverflow.Ellipsis
+                    )
+                    Spacer(modifier = Modifier.height(6.dp))
+                    Row(verticalAlignment = Alignment.CenterVertically) {
+                        Icon(Icons.Default.AccessTime, contentDescription = null, tint = Color.White.copy(alpha = 0.7f), modifier = Modifier.size(14.dp))
+                        Spacer(modifier = Modifier.width(6.dp))
+                        Text(
+                            booking.timeSlotDetails.joinToString(" • "),
+                            color = Color.White.copy(alpha = 0.8f),
+                            fontSize = 14.sp
+                        )
+                    }
+                }
+                
+                Button(
+                    onClick = onDirectionClick,
+                    shape = RoundedCornerShape(16.dp),
+                    colors = ButtonDefaults.buttonColors(containerColor = SportAccent),
+                    contentPadding = PaddingValues(12.dp)
+                ) {
+                    Icon(Icons.Default.Navigation, contentDescription = null, tint = SportPrimary, modifier = Modifier.size(20.dp))
+                }
             }
-        },
-        actions = {
-            IconButton(onClick = { /* TODO */ }) {
-                Icon(Icons.Default.Menu, contentDescription = "Menu")
+        }
+    }
+}
+
+@Composable
+fun FacilityCard(court: Court, distance: String? = null, onClick: () -> Unit) {
+    Card(
+        modifier = Modifier
+            .width(240.dp)
+            .padding(bottom = 8.dp)
+            .clickable(onClick = onClick),
+        shape = RoundedCornerShape(20.dp),
+        colors = CardDefaults.cardColors(containerColor = Color.White),
+        elevation = CardDefaults.cardElevation(4.dp)
+    ) {
+        Column {
+            Box(modifier = Modifier.height(140.dp)) {
+                AsyncImage(
+                    model = court.thumbnailUrl,
+                    contentDescription = null,
+                    modifier = Modifier.fillMaxSize(),
+                    contentScale = ContentScale.Crop
+                )
+                
+                // Rating Badge
+                Row(
+                    modifier = Modifier
+                        .align(Alignment.TopStart)
+                        .padding(12.dp)
+                        .background(Color.White, RoundedCornerShape(8.dp))
+                        .padding(horizontal = 6.dp, vertical = 4.dp),
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    Icon(Icons.Default.Star, contentDescription = null, tint = Color(0xFFFFC107), modifier = Modifier.size(14.dp))
+                    Spacer(modifier = Modifier.width(4.dp))
+                    Text(
+                        String.format(Locale.US, "%.1f", court.averageRating ?: 0.0),
+                        fontWeight = FontWeight.Bold,
+                        fontSize = 12.sp
+                    )
+                }
+
+                if (distance != null) {
+                    Surface(
+                        modifier = Modifier.align(Alignment.BottomEnd).padding(12.dp),
+                        color = SportPrimary,
+                        shape = RoundedCornerShape(8.dp)
+                    ) {
+                        Text(distance, color = Color.White, fontSize = 10.sp, modifier = Modifier.padding(horizontal = 8.dp, vertical = 4.dp), fontWeight = FontWeight.Bold)
+                    }
+                }
             }
-        },
-        colors = TopAppBarDefaults.centerAlignedTopAppBarColors(
-            containerColor = Color.White
+            
+            Column(modifier = Modifier.padding(16.dp)) {
+                Text(
+                    court.name,
+                    fontWeight = FontWeight.ExtraBold,
+                    fontSize = 16.sp,
+                    maxLines = 1,
+                    overflow = TextOverflow.Ellipsis,
+                    color = SportPrimary
+                )
+                Spacer(modifier = Modifier.height(4.dp))
+                Row(verticalAlignment = Alignment.CenterVertically) {
+                    Icon(Icons.Default.LocationOn, contentDescription = null, tint = Color.Gray, modifier = Modifier.size(12.dp))
+                    Spacer(modifier = Modifier.width(4.dp))
+                    Text(
+                        court.address,
+                        fontSize = 12.sp,
+                        color = Color.Gray,
+                        maxLines = 1,
+                        overflow = TextOverflow.Ellipsis
+                    )
+                }
+                Spacer(modifier = Modifier.height(12.dp))
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.SpaceBetween,
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    Text(
+                        "Từ ${String.format(Locale.US, "%,.0f", court.pricePerHour ?: 0.0)}đ",
+                        color = Color(0xFFE91E63),
+                        fontWeight = FontWeight.Bold,
+                        fontSize = 14.sp
+                    )
+                    Icon(Icons.Default.ArrowForward, contentDescription = null, tint = SportPrimary, modifier = Modifier.size(16.dp))
+                }
+            }
+        }
+    }
+}
+
+@Composable
+fun SectionHeader(title: String) {
+    Row(
+        modifier = Modifier
+            .fillMaxWidth()
+            .padding(horizontal = 16.dp, vertical = 12.dp),
+        verticalAlignment = Alignment.CenterVertically
+    ) {
+        Box(
+            modifier = Modifier
+                .width(4.dp)
+                .height(18.dp)
+                .clip(RoundedCornerShape(2.dp))
+                .background(SportAccent)
         )
+        Spacer(modifier = Modifier.width(8.dp))
+        Text(
+            text = title,
+            fontSize = 18.sp,
+            fontWeight = FontWeight.Black,
+            color = SportPrimary
+        )
+    }
+}
+
+@Composable
+fun SearchBarSection(navController: NavController) {
+    var text by remember { mutableStateOf("") }
+    OutlinedTextField(
+        value = text,
+        onValueChange = { text = it },
+        placeholder = { Text("Bạn muốn chơi ở đâu hôm nay?", fontSize = 14.sp, color = Color.Gray) },
+        leadingIcon = { Icon(Icons.Default.Search, contentDescription = null, tint = SportPrimary) },
+        modifier = Modifier
+            .fillMaxWidth()
+            .padding(horizontal = 16.dp, vertical = 12.dp)
+            .shadow(8.dp, RoundedCornerShape(16.dp)),
+        shape = RoundedCornerShape(16.dp),
+        colors = OutlinedTextFieldDefaults.colors(
+            focusedContainerColor = Color.White,
+            unfocusedContainerColor = Color.White,
+            focusedBorderColor = SportPrimary,
+            unfocusedBorderColor = Color.Transparent
+        ),
+        singleLine = true
     )
 }
 
 @Composable
-fun UpcomingEvent() {
-    Row(
-        modifier = Modifier
-            .fillMaxWidth()
-            .padding(horizontal = 16.dp),
-        verticalAlignment = Alignment.CenterVertically,
-        horizontalArrangement = Arrangement.SpaceBetween
-    ) {
-        Column {
-            Text(
-                "UPCOMING EVENT START ON",
-                style = MaterialTheme.typography.labelMedium,
-                color = Color.Gray
-            )
-            Spacer(modifier = Modifier.height(8.dp))
-            Row {
-                CountdownItem("02", "Days")
-                Spacer(modifier = Modifier.width(16.dp))
-                CountdownItem("22", "Hours")
-                Spacer(modifier = Modifier.width(16.dp))
-                CountdownItem("45", "Minutes")
-            }
-        }
-        Box(
-            modifier = Modifier
-                .size(40.dp)
-                .clip(CircleShape)
-                .background(Color.Red.copy(alpha = 0.1f)),
-            contentAlignment = Alignment.Center
-        ) {
-            Icon(Icons.Default.Settings, contentDescription = "Settings", tint = Color.Red)
-        }
-    }
-}
+fun PromotionCarousel() {
+    val images = listOf(
+        "https://img.freepik.com/free-vector/sport-promotion-banner-template_23-2149429447.jpg",
+        "https://img.freepik.com/free-vector/soccer-stadium-advertising-banner_23-2148633390.jpg"
+    )
+    val pagerState = rememberPagerState(pageCount = { images.size })
 
-@Composable
-fun CountdownItem(value: String, label: String) {
-    Column(horizontalAlignment = Alignment.CenterHorizontally) {
-        Text(value, style = MaterialTheme.typography.titleLarge, fontWeight = FontWeight.Bold)
-        Text(label, style = MaterialTheme.typography.labelSmall, color = Color.Gray)
-    }
-}
-
-@Composable
-fun TopFacilitiesSection(courts: List<Court>, navController: NavController) {
-    Column(modifier = Modifier.fillMaxWidth()) {
-        Text(
-            "TOP FACILITIES",
-            style = MaterialTheme.typography.titleMedium,
-            fontWeight = FontWeight.Bold,
-            modifier = Modifier.padding(horizontal = 16.dp)
-        )
-        Spacer(modifier = Modifier.height(8.dp))
-        LazyRow(
+    Column(modifier = Modifier.padding(vertical = 12.dp)) {
+        HorizontalPager(
+            state = pagerState,
             contentPadding = PaddingValues(horizontal = 16.dp),
-            horizontalArrangement = Arrangement.spacedBy(16.dp)
-        ) {
-            items(courts) { court ->
-                FacilityCard(
-                    court = court,
-                    onClick = { navController.navigate("court_detail/${court.id}") }
-                )
-            }
-        }
-    }
-}
-
-@Composable
-fun NearestFacilitiesSection(courts: List<Court>, navController: NavController) {
-    Column(modifier = Modifier.fillMaxWidth()) {
-        Text(
-            "NEAREST FACILITIES",
-            style = MaterialTheme.typography.titleMedium,
-            fontWeight = FontWeight.Bold,
-            modifier = Modifier.padding(horizontal = 16.dp)
-        )
-        Spacer(modifier = Modifier.height(8.dp))
-        LazyRow(
-            contentPadding = PaddingValues(horizontal = 16.dp),
-            horizontalArrangement = Arrangement.spacedBy(16.dp)
-        ) {
-            items(courts) { court ->
-                FacilityCard(
-                    court = court,
-                    distance = "1.2 KM", // Dummy distance
-                    onClick = { navController.navigate("court_detail/${court.id}") }
-                )
-            }
-        }
-    }
-}
-
-@Composable
-fun FacilityCard(
-    court: Court,
-    distance: String? = null,
-    onClick: () -> Unit = {}
-) {
-    Card(
-        modifier = Modifier
-            .width(200.dp)
-            .clickable(onClick = onClick),
-        shape = RoundedCornerShape(12.dp),
-        colors = CardDefaults.cardColors(containerColor = Color.White),
-        elevation = CardDefaults.cardElevation(2.dp)
-    ) {
-        Column {
-            Box(modifier = Modifier.height(100.dp)) {
-                AsyncImage(
-                    model = court.thumbnailUrl,
-                    contentDescription = court.name,
-                    modifier = Modifier.fillMaxWidth(),
-                    contentScale = ContentScale.Crop,
-                    placeholder = painterResource(id = R.drawable.ic_launcher_background),
-                    error = painterResource(id = R.drawable.ic_launcher_background)
-                )
-
-                court.averageRating?.let {
-                    Row(
+            pageSpacing = 12.dp
+        ) { page ->
+            Card(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .height(150.dp)
+                    .shadow(8.dp, RoundedCornerShape(20.dp)),
+                shape = RoundedCornerShape(20.dp)
+            ) {
+                Box {
+                    AsyncImage(
+                        model = images[page],
+                        contentDescription = null,
+                        modifier = Modifier.fillMaxSize(),
+                        contentScale = ContentScale.Crop
+                    )
+                    Box(
                         modifier = Modifier
-                            .align(Alignment.TopEnd)
-                            .padding(4.dp)
-                            .clip(RoundedCornerShape(8.dp))
-                            .background(Color.Black.copy(alpha = 0.5f))
-                            .padding(horizontal = 6.dp, vertical = 4.dp),
-                        verticalAlignment = Alignment.CenterVertically
-                    ) {
-                        Icon(
-                            Icons.Default.Star,
-                            contentDescription = "Rating",
-                            tint = Color.Yellow,
-                            modifier = Modifier.size(16.dp)
-                        )
-                        Spacer(modifier = Modifier.width(4.dp))
-                        Text(String.format(Locale.US, "%.1f", it), color = Color.White, fontSize = 12.sp)
-                    }
-                }
-            }
-            Column(modifier = Modifier.padding(8.dp)) {
-                Text(court.name, fontWeight = FontWeight.Bold, maxLines = 1)
-                Text(court.address, fontSize = 12.sp, color = Color.Gray, maxLines = 1)
-                if (distance != null) {
+                            .fillMaxSize()
+                            .background(Brush.verticalGradient(listOf(Color.Transparent, Color.Black.copy(alpha = 0.7f))))
+                    )
                     Text(
-                        distance,
-                        fontSize = 12.sp,
-                        color = MaterialTheme.colorScheme.primary,
-                        fontWeight = FontWeight.SemiBold
+                        "GIẢM GIÁ 30%\nKHUNG GIỜ VÀNG",
+                        color = SportAccent,
+                        modifier = Modifier
+                            .align(Alignment.BottomStart)
+                            .padding(20.dp),
+                        fontWeight = FontWeight.Black,
+                        fontSize = 18.sp
                     )
                 }
             }
@@ -330,45 +426,17 @@ fun FacilityCard(
     }
 }
 
-private data class BottomNavItem(val label: String, val icon: ImageVector, val route: String)
-
-@Composable
-fun MyHomeBottomAppBar(navController: NavController) {
-    val items = listOf(
-        BottomNavItem("Home", Icons.Default.Home, "home"),
-        BottomNavItem("Courts", Icons.Default.Group, "courts"),
-        BottomNavItem("My Events", Icons.Default.CalendarToday, "my_events"),
-        BottomNavItem("Booking", Icons.Default.BookmarkAdd, "booking_search"),
-        BottomNavItem("Profile", Icons.Default.Person, "profile")
-    )
-
-    NavigationBar(
-        containerColor = Color.White
-    ) {
-        val navBackStackEntry by navController.currentBackStackEntryAsState()
-        val currentRoute = navBackStackEntry?.destination?.route
-
-        items.forEach { item ->
-            NavigationBarItem(
-                selected = currentRoute == item.route,
-                onClick = {
-                    navController.navigate(item.route) {
-                        popUpTo(navController.graph.findStartDestination().id) {
-                            saveState = true
-                        }
-                        launchSingleTop = true
-                        restoreState = true
-                    }
-                },
-                icon = { Icon(item.icon, contentDescription = item.label) },
-                label = { Text(item.label) },
-                colors = NavigationBarItemDefaults.colors(
-                    selectedIconColor = Color.Red,
-                    selectedTextColor = Color.Red,
-                    unselectedIconColor = Color.Gray,
-                    unselectedTextColor = Color.Gray
-                )
-            )
-        }
+fun openGoogleMaps(context: Context, lat: Double?, lng: Double?, address: String) {
+    val uri = if (lat != null && lng != null) {
+        Uri.parse("google.navigation:q=$lat,$lng")
+    } else {
+        Uri.parse("geo:0,0?q=${Uri.encode(address)}")
+    }
+    val mapIntent = Intent(Intent.ACTION_VIEW, uri)
+    mapIntent.setPackage("com.google.android.apps.maps")
+    try {
+        context.startActivity(mapIntent)
+    } catch (e: Exception) {
+        context.startActivity(Intent(Intent.ACTION_VIEW, uri))
     }
 }
