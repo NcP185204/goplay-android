@@ -8,6 +8,7 @@ class SearchCourtsUseCase @Inject constructor(
 ) {
     suspend operator fun invoke(
         name: String? = null,
+        address: String? = null, // Đổi district sang address
         courtType: String? = null,
         minPrice: Double? = null,
         maxPrice: Double? = null,
@@ -17,5 +18,5 @@ class SearchCourtsUseCase @Inject constructor(
         radiusInKm: Double? = null,
         page: Int? = null,
         size: Int? = null
-    ) = repository.searchCourts(name, courtType, minPrice, maxPrice, minRating, latitude, longitude, radiusInKm, page, size)
+    ) = repository.searchCourts(name, address, courtType, minPrice, maxPrice, minRating, latitude, longitude, radiusInKm, page, size)
 }
