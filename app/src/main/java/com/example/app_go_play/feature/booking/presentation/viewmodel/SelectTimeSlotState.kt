@@ -1,7 +1,7 @@
 package com.example.app_go_play.feature.booking.presentation.viewmodel
 
 import com.example.app_go_play.feature.booking.domain.model.SelectableDate
-import com.example.app_go_play.feature.booking.domain.model.TimeSlot
+import com.example.app_go_play.feature.court.domain.model.TimeSlot // FIXED: Use the correct TimeSlot model
 import java.time.LocalDate
 
 data class SelectTimeSlotState(
