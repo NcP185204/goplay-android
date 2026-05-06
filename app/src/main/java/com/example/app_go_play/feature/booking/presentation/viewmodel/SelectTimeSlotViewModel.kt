@@ -5,8 +5,8 @@ import androidx.lifecycle.SavedStateHandle
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.example.app_go_play.feature.booking.domain.model.SelectableDate
-import com.example.app_go_play.feature.booking.domain.model.TimeSlot
-import com.example.app_go_play.feature.booking.domain.usecase.GetTimeSlotsUseCase
+import com.example.app_go_play.feature.court.domain.model.TimeSlot // Correct import
+import com.example.app_go_play.feature.court.domain.usecase.GetAvailableTimeSlotsUseCase // Correct import
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
@@ -20,7 +20,7 @@ import javax.inject.Inject
 @HiltViewModel
 class SelectTimeSlotViewModel @Inject constructor(
     private val savedStateHandle: SavedStateHandle,
-    private val getTimeSlotsUseCase: GetTimeSlotsUseCase // 1. Tiêm UseCase
+    private val getAvailableTimeSlotsUseCase: GetAvailableTimeSlotsUseCase // 1. Inject the CORRECT UseCase
 ) : ViewModel() {
 
     private val _uiState = MutableStateFlow(SelectTimeSlotState())
@@ -37,12 +37,13 @@ class SelectTimeSlotViewModel @Inject constructor(
         } else {
             _uiState.update { it.copy(courtId = courtId) }
             loadInitialData()
+            // Also load slots for the initial date
+            onDateSelected(LocalDate.now())
         }
     }
 
     private fun loadInitialData() {
         viewModelScope.launch {
-            _uiState.update { it.copy(isLoading = true) }
             val dates = List(14) { i ->
                 val date = LocalDate.now().plusDays(i.toLong())
                 SelectableDate(
@@ -51,50 +52,39 @@ class SelectTimeSlotViewModel @Inject constructor(
                     dayOfMonth = date.dayOfMonth.toString()
                 )
             }
-            _uiState.update {
-                it.copy(isLoading = false, dates = dates)
-            }
+            _uiState.update { it.copy(dates = dates) }
         }
     }
 
     fun onDateSelected(date: LocalDate) {
         val currentState = _uiState.value
-        if (currentState.selectedDate == date) return
-
         _uiState.update { it.copy(isLoading = true, selectedDate = date, selectedTimeSlots = emptyList(), totalPrice = 0) }
 
         viewModelScope.launch {
-            val courtId = currentState.courtId
+            // 2. Safely convert courtId from String to Int
+            val courtId = currentState.courtId?.toIntOrNull()
             if (courtId == null) {
-                _uiState.update { it.copy(isLoading = false, error = "Court ID is missing.") }
+                _uiState.update { it.copy(isLoading = false, error = "Court ID is invalid.") }
                 return@launch
             }
 
-            // 2. Gọi UseCase để lấy dữ liệu
-            getTimeSlotsUseCase(courtId, date)
+            // 3. Call the correct UseCase
+            getAvailableTimeSlotsUseCase(courtId, date)
                 .onSuccess { timeSlots ->
-                    // 3. Xử lý kết quả thành công
                     _uiState.update {
-                        it.copy(
-                            isLoading = false,
-                            timeSlots = timeSlots
-                        )
+                        it.copy(isLoading = false, timeSlots = timeSlots)
                     }
                 }
                 .onFailure { throwable ->
-                    // 3. Xử lý kết quả thất bại
                     _uiState.update {
-                        it.copy(
-                            isLoading = false,
-                            error = throwable.message ?: "An unexpected error occurred."
-                        )
+                        it.copy(isLoading = false, error = throwable.message ?: "An unexpected error occurred.")
                     }
                 }
         }
     }
 
     fun onTimeSlotToggled(slot: TimeSlot) {
-        if (!slot.isAvailable) return
+        if (!slot.available) return
 
         val currentSelected = _uiState.value.selectedTimeSlots.toMutableList()
         if (currentSelected.contains(slot)) {
