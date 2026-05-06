@@ -23,42 +23,68 @@ sealed interface CourtListState {
 @HiltViewModel
 class CourtListViewModel @Inject constructor(
     private val searchCourtsUseCase: SearchCourtsUseCase,
-    savedStateHandle: SavedStateHandle // Inject SavedStateHandle to get nav args
+    savedStateHandle: SavedStateHandle
 ) : ViewModel() {
 
     private val _courtsState = MutableStateFlow<CourtListState>(CourtListState.Idle)
     val courtsState = _courtsState.asStateFlow()
 
-    // Read the initial query from navigation arguments. This is a key change.
-    val initialQuery: String? = savedStateHandle.get<String>("query")
+    private val _searchQuery = MutableStateFlow(savedStateHandle.get<String>("query") ?: "")
+    val searchQuery = _searchQuery.asStateFlow()
+
+    private val _selectedSport = MutableStateFlow<String?>(null)
+    val selectedSport = _selectedSport.asStateFlow()
+
+    private val _selectedDistrict = MutableStateFlow<String?>(null)
+    val selectedDistrict = _selectedDistrict.asStateFlow()
 
     init {
-        // If there's an initial query from another screen, perform a search right away.
-        if (!initialQuery.isNullOrBlank()) {
-            searchCourts(name = initialQuery)
+        searchCourts()
+    }
+
+    fun onQueryChanged(query: String) {
+        _searchQuery.value = query
+        searchCourts()
+    }
+
+    fun onSportChanged(sport: String?) {
+        _selectedSport.value = if (sport == "Tất cả") null else sport
+        searchCourts()
+    }
+
+    fun onDistrictChanged(district: String?) {
+        _selectedDistrict.value = if (district == "Tất cả") null else district
+        searchCourts()
+    }
+
+    private fun mapDistrictToDbFormat(district: String?): String? {
+        if (district == null || district == "Tất cả") return null
+        return if (district.startsWith("Quận ")) {
+            district.replace("Quận ", "Q")
+        } else {
+            district
         }
     }
 
-    fun searchCourts(
-        name: String?,
-        page: Int = 0,
-        size: Int = 10
-    ) {
-        if (name.isNullOrBlank()) {
-            _courtsState.value = CourtListState.Idle
-            return
-        }
-
+    fun searchCourts(page: Int = 0, size: Int = 20) {
         viewModelScope.launch {
             _courtsState.update { CourtListState.Loading }
 
-            searchCourtsUseCase(name = name, page = page, size = size)
-                .onSuccess { pagedResult ->
-                    _courtsState.update { CourtListState.Success(pagedResult) }
-                }
-                .onFailure { error ->
-                    _courtsState.update { CourtListState.Error(error.message ?: "An unknown error occurred") }
-                }
+            val dbDistrict = mapDistrictToDbFormat(_selectedDistrict.value)
+            val nameQuery = _searchQuery.value.trim().ifEmpty { null }
+
+            // TÁCH BIỆT: nameQuery gửi vào 'name', dbDistrict gửi vào 'address'
+            searchCourtsUseCase(
+                name = nameQuery,
+                address = dbDistrict, // Truyền vào tham số address riêng biệt
+                courtType = _selectedSport.value,
+                page = page,
+                size = size
+            ).onSuccess { pagedResult ->
+                _courtsState.update { CourtListState.Success(pagedResult) }
+            }.onFailure { error ->
+                _courtsState.update { CourtListState.Error(error.message ?: "Đã có lỗi xảy ra") }
+            }
         }
     }
 }
