@@ -6,19 +6,18 @@ import javax.inject.Inject
 class GetTopCourtsUseCase @Inject constructor(
     private val courtRepository: CourtRepository
 ) {
-    // In the future, you can add logic here to determine what a "top" court is
-    // (e.g., sort by rating, add specific filters).
-    // For now, it will just fetch a general list of courts.
-
-    // SỬA LỖI: Sử dụng hàm searchCourts đã có thay vì getCourts không tồn tại.
-    // Gọi với các tham số null để lấy danh sách chung.
+    /**
+     * Lấy danh sách các sân hàng đầu.
+     * Hiện tại lọc theo rating >= 4.0 và không giới hạn địa điểm.
+     */
     suspend operator fun invoke(page: Int = 0, size: Int = 10) =
         courtRepository.searchCourts(
             name = null,
+            address = null, // THÊM THAM SỐ NÀY ĐỂ KHÁC PHỤC LỖI
             courtType = null,
             minPrice = null,
             maxPrice = null,
-            minRating = null, // You could set this to 4.0 for example to get actual top courts
+            minRating = 4.0, 
             latitude = null,
             longitude = null,
             radiusInKm = null,
