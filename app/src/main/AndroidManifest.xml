@@ -4,6 +4,8 @@
 
     <uses-permission android:name="android.permission.INTERNET" />
     <uses-permission android:name="android.permission.ACCESS_NETWORK_STATE" />
+    <!-- Android 13+ yêu cầu quyền này để hiển thị thông báo -->
+    <uses-permission android:name="android.permission.POST_NOTIFICATIONS" />
 
     <application
         android:name=".GoPlayApplication"
@@ -17,7 +19,6 @@
         android:usesCleartextTraffic="true"
         android:theme="@style/Theme.App_GO_PLAY">
 
-        <!-- Cấu hình Facebook SDK (đọc từ strings.xml) -->
         <meta-data
             android:name="com.facebook.sdk.ApplicationId"
             android:value="@string/facebook_app_id" />
@@ -30,17 +31,36 @@
             android:exported="true"
             android:label="@string/app_name"
             android:theme="@style/Theme.App_GO_PLAY">
+            
             <intent-filter>
                 <action android:name="android.intent.action.MAIN" />
                 <category android:name="android.intent.category.LAUNCHER" />
             </intent-filter>
+
+            <!-- DEEP LINK: Mở App sau khi thanh toán MoMo -->
+            <intent-filter android:autoVerify="true">
+                <action android:name="android.intent.action.VIEW" />
+                <category android:name="android.intent.category.DEFAULT" />
+                <category android:name="android.intent.category.BROWSABLE" />
+                
+                <data android:scheme="goplay" android:host="payment-result" />
+            </intent-filter>
         </activity>
 
-        <!-- Facebook SDK cũng yêu cầu một Activity đặc biệt -->
+        <!-- ĐĂNG KÝ FCM SERVICE -->
+        <service
+            android:name=".feature.notification.data.remote.FCMService"
+            android:exported="false">
+            <intent-filter>
+                <action android:name="com.google.firebase.MESSAGING_EVENT" />
+            </intent-filter>
+        </service>
+
         <activity
             android:name="com.facebook.FacebookActivity"
             android:configChanges="keyboard|keyboardHidden|screenLayout|screenSize|orientation"
             android:label="@string/app_name" />
+            
         <activity
             android:name="com.facebook.CustomTabActivity"
             android:exported="true">
