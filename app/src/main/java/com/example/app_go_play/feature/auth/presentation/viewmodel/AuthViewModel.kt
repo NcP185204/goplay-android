@@ -4,6 +4,7 @@ import android.util.Log
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.example.app_go_play.di.TokenManager
+import com.example.app_go_play.feature.auth.data.remote.UserApi
 import com.example.app_go_play.feature.auth.domain.model.Role
 import com.example.app_go_play.feature.auth.domain.usecase.ForgotPasswordUseCase
 import com.example.app_go_play.feature.auth.domain.usecase.LoginUseCase
@@ -12,12 +13,14 @@ import com.example.app_go_play.feature.auth.domain.usecase.RegisterUseCase
 import com.example.app_go_play.feature.auth.domain.usecase.SocialLoginUseCase
 import com.facebook.AccessToken
 import com.facebook.login.LoginManager
+import com.google.firebase.messaging.FirebaseMessaging
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.tasks.await
 import javax.inject.Inject
 
 @HiltViewModel
@@ -27,7 +30,8 @@ class AuthViewModel @Inject constructor(
     private val forgotPasswordUseCase: ForgotPasswordUseCase,
     private val socialLoginUseCase: SocialLoginUseCase,
     private val logoutUseCase: LogoutUseCase,
-    private val tokenManager: TokenManager
+    private val tokenManager: TokenManager,
+    private val userApi: UserApi // Inject UserApi để update FCM token
 ) : ViewModel() {
 
     private val _authState = MutableStateFlow<AuthState>(AuthState.Unknown)
@@ -39,6 +43,7 @@ class AuthViewModel @Inject constructor(
             if (tokenManager.accessToken != null) {
                 Log.d("AuthViewModel", "Access Token found. User is logged in.")
                 _authState.value = AuthState.Success("Logged in successfully")
+                updateFcmTokenToServer() // Cập nhật token nếu đã login
             } else {
                 Log.d("AuthViewModel", "No Access Token found. User is not logged in.")
                 _authState.value = AuthState.Unauthenticated
@@ -98,12 +103,25 @@ class AuthViewModel @Inject constructor(
     private fun handleLoginResult(result: Result<String>, errorMessage: String) {
         _authState.value = result.fold(
             onSuccess = { 
+                updateFcmTokenToServer() // Cập nhật FCM Token ngay khi login thành công
                 AuthState.Success(it)
             },
             onFailure = { 
                 AuthState.Error(it.message ?: errorMessage) 
             }
         )
+    }
+
+    private fun updateFcmTokenToServer() {
+        viewModelScope.launch {
+            try {
+                val token = FirebaseMessaging.getInstance().token.await()
+                userApi.updateFcmToken(token)
+                Log.d("AuthViewModel", "FCM Token updated to server: $token")
+            } catch (e: Exception) {
+                Log.e("AuthViewModel", "Failed to update FCM Token to server", e)
+            }
+        }
     }
 
     fun setAuthLoading() {
