@@ -55,7 +55,10 @@ import com.example.app_go_play.R
 import com.example.app_go_play.feature.court.domain.model.TimeSlot
 import com.example.app_go_play.feature.court.presentation.viewmodel.CourtDetailState
 import com.example.app_go_play.feature.court.presentation.viewmodel.CourtDetailViewModel
+import com.google.gson.Gson
 import kotlinx.coroutines.launch
+import java.net.URLEncoder
+import java.nio.charset.StandardCharsets
 import java.time.LocalDate
 import java.time.format.DateTimeFormatter
 import java.util.Locale
@@ -69,10 +72,13 @@ fun CourtDetailScreen(
 
     Scaffold(
         bottomBar = {
-            // STEP 4: Add a booking button at the bottom
-            if (state.court != null) { // Only show if court details are loaded
+            if (state.court != null) {
                 BookingBottomBar(state = state, onBookClick = {
-                    // TODO: Navigate to confirmation screen
+                    val slotsJson = Gson().toJson(state.selectedTimeSlots)
+                    val encodedSlotsJson = URLEncoder.encode(slotsJson, StandardCharsets.UTF_8.toString())
+                    val courtName = state.court?.name ?: ""
+                    val courtAddress = state.court?.address ?: ""
+                    navController.navigate("confirm_booking/$encodedSlotsJson/$courtName/$courtAddress")
                 })
             }
         }
@@ -221,12 +227,12 @@ private fun TimeSlotItem(slot: TimeSlot, isSelected: Boolean, onClick: () -> Uni
 
     val containerColor = when {
         isSelected -> MaterialTheme.colorScheme.primary
-        slot.available -> MaterialTheme.colorScheme.surface
+        slot.available -> MaterialTheme.colorScheme.surface // Fixed: Use .available
         else -> MaterialTheme.colorScheme.onSurface.copy(alpha = 0.12f)
     }
     val contentColor = when {
         isSelected -> MaterialTheme.colorScheme.onPrimary
-        slot.available -> MaterialTheme.colorScheme.onSurface
+        slot.available -> MaterialTheme.colorScheme.onSurface // Fixed: Use .available
         else -> MaterialTheme.colorScheme.onSurface.copy(alpha = 0.38f)
     }
     val borderColor = if (isSelected) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.outline
@@ -235,7 +241,7 @@ private fun TimeSlotItem(slot: TimeSlot, isSelected: Boolean, onClick: () -> Uni
         modifier = Modifier
             .border(1.dp, borderColor, RoundedCornerShape(8.dp))
             .background(containerColor, RoundedCornerShape(8.dp))
-            .clickable(enabled = slot.available, onClick = onClick)
+            .clickable(enabled = slot.available, onClick = onClick) // Fixed: Use .available
             .padding(vertical = 8.dp, horizontal = 12.dp),
         contentAlignment = Alignment.Center
     ) {
