@@ -4,6 +4,7 @@ plugins {
     alias(libs.plugins.kotlin.compose)
     id("kotlin-kapt")
     id("com.google.dagger.hilt.android")
+    id("com.google.gms.google-services")
 }
 
 android {
@@ -30,9 +31,7 @@ android {
         }
     }
     compileOptions {
-        // Bật tính năng Desugaring để sử dụng các API Java 8+ trên các phiên bản Android cũ
         isCoreLibraryDesugaringEnabled = true
-
         sourceCompatibility = JavaVersion.VERSION_11
         targetCompatibility = JavaVersion.VERSION_11
     }
@@ -45,10 +44,13 @@ android {
 }
 
 dependencies {
+    // FIREBASE SETUP
+    implementation(platform("com.google.firebase:firebase-bom:33.1.2"))
+    implementation("com.google.firebase:firebase-messaging")
+    implementation("com.google.firebase:firebase-analytics")
 
-    // Thêm thư viện Desugaring
+    // Core libraries
     coreLibraryDesugaring("com.android.tools:desugar_jdk_libs:2.0.4")
-
     implementation(libs.androidx.core.ktx)
     implementation(libs.androidx.lifecycle.runtime.ktx)
     implementation(libs.androidx.activity.compose)
@@ -57,16 +59,34 @@ dependencies {
     implementation(libs.androidx.compose.ui.graphics)
     implementation(libs.androidx.compose.ui.tooling.preview)
     implementation(libs.androidx.compose.material3)
-    // Bypassing the version catalog for a direct and guaranteed fix
     implementation("androidx.compose.material:material-icons-extended")
     implementation(libs.androidx.navigation.compose)
     implementation(libs.androidx.lifecycle.viewmodel.compose)
+    
+    // Networking
     implementation(libs.retrofit)
     implementation(libs.converter.gson)
-    // THÊM GIÁN ĐIỆP LOGGING
     implementation("com.squareup.okhttp3:logging-interceptor:4.12.0")
+    
+    // DI - Hilt
+    implementation("com.google.dagger:hilt-android:2.51.1")
+    kapt("com.google.dagger:hilt-compiler:2.51.1")
+    implementation("androidx.hilt:hilt-navigation-compose:1.2.0")
+
+    // Auth & Social
+    implementation("androidx.credentials:credentials:1.2.2")
+    implementation("androidx.credentials:credentials-play-services-auth:1.2.2")
+    implementation("com.google.android.gms:play-services-auth:21.2.0")
+    implementation("com.facebook.android:facebook-login:17.0.0")
+
+    // UI Utilities
+    implementation("io.coil-kt:coil-compose:2.6.0")
+    
+    // Room
     implementation(libs.androidx.room.ktx)
     implementation(libs.googleid)
+
+    // Testing
     testImplementation(libs.junit)
     androidTestImplementation(libs.androidx.junit)
     androidTestImplementation(libs.androidx.espresso.core)
@@ -74,23 +94,4 @@ dependencies {
     androidTestImplementation(libs.androidx.compose.ui.test.junit4)
     debugImplementation(libs.androidx.compose.ui.tooling)
     debugImplementation(libs.androidx.compose.ui.test.manifest)
-
-    // Hilt
-    implementation("com.google.dagger:hilt-android:2.51.1")
-    kapt("com.google.dagger:hilt-compiler:2.51.1")
-    implementation("androidx.hilt:hilt-navigation-compose:1.2.0")
-
-    // Jetpack Credential Manager for modern Sign-In
-    implementation("androidx.credentials:credentials:1.2.2")
-    implementation("androidx.credentials:credentials-play-services-auth:1.2.2")
-
-
-    // Google Sign-In
-    implementation("com.google.android.gms:play-services-auth:21.2.0")
-
-    // Facebook Login
-    implementation("com.facebook.android:facebook-login:17.0.0")
-
-    // Coil for image loading
-    implementation("io.coil-kt:coil-compose:2.6.0")
 }
