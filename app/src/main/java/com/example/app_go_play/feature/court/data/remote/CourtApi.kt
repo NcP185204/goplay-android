@@ -5,8 +5,6 @@ import retrofit2.http.*
 
 interface CourtApi {
 
-    // --- Dành cho Chủ sân (Manager/Admin) ---
-
     @POST("api/courts")
     suspend fun createCourt(@Body request: CreateCourtRequestDto): CourtDto
 
@@ -22,11 +20,10 @@ interface CourtApi {
     @POST("api/courts/{courtId}/generate-slots")
     suspend fun generateInitialTimeSlots(@Path("courtId") courtId: Int): List<TimeSlotDto>
 
-    // --- Dành cho Người chơi (Player) & Chung ---
-
     @GET("api/courts/search")
     suspend fun searchCourts(
         @Query("name") name: String?,
+        @Query("address") address: String?, // ĐỔI TỪ district SANG address
         @Query("courtType") courtType: String?,
         @Query("minPrice") minPrice: Double?,
         @Query("maxPrice") maxPrice: Double?,
@@ -44,7 +41,7 @@ interface CourtApi {
     @GET("api/courts/{courtId}/available-slots")
     suspend fun getAvailableTimeSlots(
         @Path("courtId") courtId: Int,
-        @Query("date") date: String // Gửi ngày theo định dạng "yyyy-MM-dd"
+        @Query("date") date: String 
     ): List<TimeSlotDto>
 
     @POST("api/courts/{courtId}/reviews")
